@@ -144,26 +144,50 @@ class VideoPipeline:
                     logger.error(f"Missing required paths for GroundingSAM: {', '.join(missing_paths)}")
                     raise ValueError(f"Missing required paths for GroundingSAM: {', '.join(missing_paths)}")
                 
-                # Check if paths exist
+                # Convert relative paths to absolute if needed
+                current_dir = Path.cwd()
+                for path_key in required_paths:
+                    path_str = entity_config[path_key]
+                    path = Path(path_str)
+                    
+                    # If it's a relative path, make it absolute
+                    if not path.is_absolute():
+                        abs_path = (current_dir / path).resolve()
+                        entity_config[path_key] = str(abs_path)
+                        logger.info(f"Converted relative path '{path_str}' to absolute path '{abs_path}'")
+                
+                # Check if paths exist after conversion
                 for path_key in required_paths:
                     path = entity_config[path_key]
                     if not Path(path).exists():
                         logger.error(f"Path does not exist: {path}")
                         raise ValueError(f"Path does not exist: {path}")
+                        
+                # Log the final paths being used
+                logger.info("Final paths for GroundingSAM:")
+                for path_key in required_paths:
+                    logger.info(f"  {path_key}: {entity_config[path_key]}")
             
             # Initialize detector
             self.entity_detector = EntityDetector(entity_config)
             
         except Exception as e:
             logger.error(f"Error initializing Entity Detector: {str(e)}")
+            logger.error(f"Entity Detection initialization failed with exception:", exc_info=True)
             self.failed_components.append("entity_detection")
             self.entity_detector = None
             
         # Audio processing
         try:
-            self.audio_processor = AudioProcessor(self.config.get("audio_processing"))
+            audio_config = self.config.get("audio_processing")
+            logger.info(f"Audio processing config before initialization:")
+            for key, value in audio_config.items():
+                logger.info(f"  {key}: {value}")
+                
+            self.audio_processor = AudioProcessor(audio_config)
         except Exception as e:
             logger.error(f"Error initializing Audio Processor: {str(e)}")
+            logger.error(f"Audio Processing initialization failed with exception:", exc_info=True)
             self.failed_components.append("audio_processing")
             self.audio_processor = None
             

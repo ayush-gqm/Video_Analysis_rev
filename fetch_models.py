@@ -12,10 +12,142 @@ import shutil
 import tempfile
 import subprocess
 from pathlib import Path
+import requests
+from tqdm import tqdm
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Model URLs and paths for GroundingSAM
+GROUNDING_SAM_MODELS = {
+    "grounding_dino_config": {
+        "url": "https://raw.githubusercontent.com/IDEA-Research/GroundingDINO/main/groundingdino/config/GroundingDINO_SwinT_OGC.py",
+        "path": "models/grounding_sam/GroundingDINO_SwinT_OGC.py"
+    },
+    "grounding_dino_checkpoint": {
+        "url": "https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth",
+        "path": "models/grounding_sam/groundingdino_swint_ogc.pth"
+    },
+    "sam_checkpoint": {
+        "url": "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth",
+        "path": "models/grounding_sam/sam_vit_h_4b8939.pth"
+    }
+}
+
+def download_file(url, destination, desc=None):
+    """
+    Download a file from URL to destination with progress bar.
+    
+    Args:
+        url: URL to download from
+        destination: Destination path
+        desc: Description for progress bar
+    """
+    # Create parent directories if they don't exist
+    os.makedirs(os.path.dirname(os.path.abspath(destination)), exist_ok=True)
+    
+    # Download with progress bar
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+    
+    total_size = int(response.headers.get('content-length', 0))
+    block_size = 8192  # 8KB
+    
+    desc = desc or os.path.basename(destination)
+    
+    with open(destination, 'wb') as f, tqdm(
+        desc=desc,
+        total=total_size,
+        unit='B',
+        unit_scale=True,
+        unit_divisor=1024,
+    ) as pbar:
+        for data in response.iter_content(block_size):
+            f.write(data)
+            pbar.update(len(data))
+
+def setup_grounding_sam(force=False):
+    """
+    Download and prepare Grounding DINO and SAM models.
+    
+    Args:
+        force: Force redownload even if files exist
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    logger.info("Setting up Grounding DINO and SAM models...")
+    
+    try:
+        # Create model directory
+        Path("models/grounding_sam").mkdir(parents=True, exist_ok=True)
+        
+        # Download models
+        for model_name, model_info in GROUNDING_SAM_MODELS.items():
+            url = model_info["url"]
+            destination = model_info["path"]
+            
+            if os.path.exists(destination) and not force:
+                logger.info(f"{model_name} already exists at {destination}")
+                continue
+                
+            # Remove existing file if force flag is set
+            if os.path.exists(destination) and force:
+                logger.info(f"Removing existing file: {destination}")
+                os.remove(destination)
+                
+            logger.info(f"Downloading {model_name} from {url}...")
+            download_file(url, destination, desc=model_name)
+            
+        logger.info("All Grounding DINO and SAM models have been downloaded successfully")
+        
+        # Try importing required modules
+        try:
+            import groundingdino
+            logger.info("Successfully imported groundingdino module")
+        except ImportError as e:
+            logger.error(f"Failed to import groundingdino: {e}")
+            logger.info("Try installing with: pip install groundingdino-py")
+            return False
+            
+        try:
+            import segment_anything
+            logger.info("Successfully imported segment_anything module")
+        except ImportError as e:
+            logger.error(f"Failed to import segment_anything: {e}")
+            logger.info("Try installing with: pip install segment-anything")
+            return False
+            
+        # Update config if it exists to use the new model paths
+        config_path = Path("config.yaml")
+        if config_path.exists():
+            import yaml
+            
+            # Read existing config
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+            
+            # Update entity detection paths
+            if 'entity_detection' in config:
+                entity_config = config['entity_detection']
+                entity_config["grounding_dino_config_path"] = GROUNDING_SAM_MODELS["grounding_dino_config"]["path"]
+                entity_config["grounding_dino_checkpoint_path"] = GROUNDING_SAM_MODELS["grounding_dino_checkpoint"]["path"]
+                entity_config["sam_checkpoint_path"] = GROUNDING_SAM_MODELS["sam_checkpoint"]["path"]
+                
+                # Write updated config
+                with open(config_path, 'w') as f:
+                    yaml.dump(config, f, default_flow_style=False)
+                    
+                logger.info(f"Updated config.yaml with new model paths")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error setting up Grounding DINO and SAM models: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 def setup_yolo():
     """Download and prepare YOLOv5 model."""
@@ -137,12 +269,14 @@ def main():
     parser = argparse.ArgumentParser(description="Download and prepare models for video analysis pipeline")
     parser.add_argument("--yolo", action="store_true", help="Prepare YOLOv5 model")
     parser.add_argument("--whisperx", action="store_true", help="Check WhisperX installation")
+    parser.add_argument("--grounding-sam", action="store_true", help="Download and prepare Grounding DINO and SAM models")
+    parser.add_argument("--force", action="store_true", help="Force redownload of models even if they exist")
     parser.add_argument("--all", action="store_true", help="Prepare all models")
     
     args = parser.parse_args()
     
     # If no specific flags, prepare all
-    if not (args.yolo or args.whisperx):
+    if not (args.yolo or args.whisperx or args.grounding_sam):
         args.all = True
         
     # Track failures
@@ -164,6 +298,15 @@ def main():
         except Exception as e:
             logger.error(f"Failed to check WhisperX: {e}")
             failures.append("WhisperX")
+    
+    # Setup GroundingSAM
+    if args.all or args.grounding_sam:
+        try:
+            if not setup_grounding_sam(force=args.force):
+                failures.append("GroundingSAM")
+        except Exception as e:
+            logger.error(f"Failed to setup GroundingSAM: {e}")
+            failures.append("GroundingSAM")
     
     # Report results
     if failures:

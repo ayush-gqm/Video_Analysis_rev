@@ -49,6 +49,18 @@ This repository contains all the Python code and configuration files needed to r
     - `pipeline_enhancer.py`: Dynamic pipeline enhancements
     - `clean_cache.py`: Cache cleanup utility
   - `cleanup.py`: Repository maintenance script
+  
+- **Models**:
+  - `models/`: Directory for all model files
+    - `grounding_sam/`: GroundingSAM model files
+      - `GroundingDINO_SwinT_OGC.py`: GroundingDINO configuration
+      - `groundingdino_swint_ogc.pth`: GroundingDINO weights
+      - `sam_vit_h_4b8939.pth`: SAM model weights
+  
+- **Helpers**:
+  - `fetch_models.py`: Downloads and sets up all required models
+  - `check_pipeline.py`: Verifies pipeline configuration and model setup
+  - `check_models.py`: Tests loading of specific model components
 
 ## Prerequisites
 
@@ -76,18 +88,38 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Prepare required models:
+4. Install GroundingSAM dependencies:
 ```bash
-# Download and initialize YOLOv5 and other models
-python fetch_models.py --all
+pip install groundingdino-py segment-anything
 ```
 
-5. Set up environment variables:
+5. Prepare required models:
+```bash
+# Download and initialize all models (YOLOv5, GroundingSAM, etc.)
+python fetch_models.py --all
+
+# For GroundingSAM models only
+python fetch_models.py --grounding-sam
+
+# To force redownload models
+python fetch_models.py --grounding-sam --force
+```
+
+6. Set up environment variables:
 ```bash
 export GEMINI_API_KEY="your_api_key_here"  # Required for scene analysis
 ```
 
 ### Troubleshooting Installation
+
+If you encounter any issues with model setup, you can verify your configuration:
+```bash
+# Verify the entire pipeline configuration
+python check_pipeline.py
+
+# Test loading of GroundingSAM models only
+python check_models.py
+```
 
 If you encounter any issues with YOLOv5 model imports, you can specifically fix them with:
 ```bash
@@ -162,7 +194,11 @@ The pipeline behavior can be customized by editing `config.yaml` or creating you
 - **Device Selection**: CUDA/CPU processing options
 - **Scene Detection**: Thresholds, scene length parameters
 - **Keyframe Extraction**: Method, number of frames
-- **Entity Detection**: Confidence thresholds
+- **Entity Detection**: 
+  - Detection model (GroundingSAM or YOLOv5)
+  - Model paths for GroundingSAM
+  - Confidence thresholds
+  - Detection prompts
 - **Audio Processing**: Transcription model, language
 - **Gemini Vision**: Temperature, token limits, structured output fields
 

@@ -1,0 +1,10 @@
+/venv
+.env
+/results
+**/__pycache__
+/models
+*.log
+test.py
+check_models.py
+check_pipeline.py
+entity_detector_test.py

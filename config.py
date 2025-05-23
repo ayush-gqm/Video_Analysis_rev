@@ -56,6 +56,9 @@ def load_config(config_path=None):
         with open(config_path, 'r') as f:
             config = yaml.safe_load(f)
             
+        # Get the config file's directory to resolve relative paths
+        config_dir = config_path.parent.absolute()
+        
         # Merge with defaults for any missing keys
         merged_config = DEFAULT_CONFIG.copy()
         for section, values in config.items():
@@ -64,7 +67,7 @@ def load_config(config_path=None):
             else:
                 merged_config[section] = values
         
-        # Check if entity detection paths are present
+        # Check and handle entity detection paths
         if 'entity_detection' in merged_config:
             entity_config = merged_config['entity_detection']
             required_paths = [
@@ -73,6 +76,19 @@ def load_config(config_path=None):
                 "sam_checkpoint_path"
             ]
             
+            # Convert relative paths to absolute
+            for path_key in required_paths:
+                if path_key in entity_config:
+                    path_str = entity_config[path_key]
+                    path = Path(path_str)
+                    
+                    # If it's a relative path, make it absolute relative to config file location
+                    if not path.is_absolute():
+                        abs_path = (config_dir / path).resolve()
+                        entity_config[path_key] = str(abs_path)
+                        logger.info(f"Converted relative path '{path_str}' to absolute path '{abs_path}'")
+            
+            # Check for missing paths
             missing_paths = [path for path in required_paths if path not in entity_config]
             if missing_paths:
                 logger.warning(f"Missing required entity detection paths: {', '.join(missing_paths)}")
