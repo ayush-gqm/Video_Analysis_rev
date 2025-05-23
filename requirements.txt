@@ -1,0 +1,60 @@
+# Core dependencies
+numpy==2.1.1  # Fixed version for ultralytics compatibility
+torch==2.6.0  # Updated version based on loaded models
+torchvision==0.21.0  # Compatible with torch 2.6.0
+protobuf==5.26.1  # Fixed version for google-ai-generativelanguage and grpcio-status
+opencv-python-headless>=4.5.0  # Use headless version for all OpenCV needs
+Pillow>=8.0.0
+tqdm>=4.65.0
+scikit-learn>=1.0.0
+pandas>=1.3.0
+pyyaml>=6.0.0
+scipy>=1.7.0  # Required by several components
+typing_extensions>=4.0.0  # Required by various dependencies
+psutil>=5.9.0  # System resource monitoring
+
+# Video processing
+ffmpeg-python>=0.2.0
+open_clip-torch>=2.0.0,<3.0.0  # Ensure torch compatibility
+
+# Entity detection
+ultralytics==8.3.95  # Fixed version for compatibility
+pytesseract>=0.3.10  # OCR
+groundingdino-py # Try installing from PyPI instead of git
+git+https://github.com/facebookresearch/segment-anything.git
+
+# Audio processing - Fixed versions matching WhisperX 3.3.1 requirements
+# Install base dependencies first
+pyannote.audio>=2.0.0  # Speaker diarization
+torch-audiomentations>=0.11.0  # Required by WhisperX
+transformers>=4.30.0  # Required by WhisperX
+datasets>=2.12.0  # Required by WhisperX
+soundfile>=0.12.1  # Required by WhisperX
+librosa>=0.10.0  # Required by WhisperX
+pydub==0.25.1
+webrtcvad==2.0.10
+
+# Install packages in exact versions needed
+ctranslate2==4.4.0  # Required by WhisperX 3.3.1 (must be < 4.5.0)
+faster-whisper==1.1.0  # Required by WhisperX 3.3.1 (exactly this version)
+
+# Now install WhisperX
+whisperx @ git+https://github.com/m-bain/whisperx.git@v3.3.1  # Install specific version tag from GitHub
+
+# VAD requirements (Silero VAD instead of NeMo to avoid mamba-ssm)
+git+https://github.com/snakers4/silero-vad  # Silero VAD for voice activity detection
+onnxruntime>=1.14.0  # For Silero VAD
+
+# Vision analysis
+google-generativeai>=0.5.0  # Required for Gemini 1.5/2.0 support
+google-ai-generativelanguage==0.6.15  # Fixed version for protobuf compatibility
+grpcio-status==1.71.0  # Fixed version for protobuf compatibility
+
+# Optional dependencies
+matplotlib>=3.5.0  # For visualization
+seaborn>=0.11.0  # For visualization
+
+# System requirements (not pip-installable):
+# - FFmpeg (for video processing)
+# - Tesseract OCR (for text detection)
+# - CUDA toolkit (for GPU support) 

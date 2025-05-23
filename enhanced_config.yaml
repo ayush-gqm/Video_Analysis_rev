@@ -1,0 +1,146 @@
+# Enhanced configuration for improved video analysis pipeline
+
+# Global settings
+device: "cuda"  # or "cpu" depending on availability
+output_dir: "enhanced_output"
+log_level: "INFO"
+
+# Scene detection settings with dialogue awareness
+scene_detection:
+  # Base detection parameters
+  threshold: 0.65
+  min_scene_length: 10.0  # seconds - reduced to allow more fine-grained scenes
+  max_scene_duration: 300.0
+  min_scene_duration: 5.0  # reduced to capture shorter dialogue-driven scenes
+  
+  # Dialogue-aware enhancements
+  dialogue_aware: true
+  dialogue_preservation_weight: 0.8  # Higher weight to preserve dialogue continuity
+  max_temporal_gap: 1.5  # Reduced to be more sensitive to scene changes
+  
+  # Semantic scene combination parameters
+  target_scene_duration: 60.0
+  combine_scenes: true
+  
+  # Advanced scene clustering
+  clip_model: "ViT-L-14"
+  clip_pretrained: "openai"
+  setting_similarity_threshold: 0.75
+
+# Enhanced keyframe extraction settings
+keyframe_extraction:
+  method: "content_based"
+  frames_per_scene: 12  # Increased from default 5
+  min_frames_per_scene: 8  # Increased from default 3
+  max_frames_per_scene: 24  # Increased from default 8
+  
+  # Temporal distribution settings
+  ensure_temporal_coverage: true
+  temporal_coverage_factor: 0.7
+  
+  # Dynamic scaling settings
+  long_scene_scale: 2.0  # Increased from 1.5
+  very_long_scene_scale: 3.0  # Increased from 2.0
+  
+  # Large scene optimization
+  batch_size: 32
+  device: "cuda"  # or "cpu"
+  fallback_to_uniform: true
+
+# Entity detection settings
+entity_detection:
+  min_confidence: 0.4  # Slightly lowered for better recall
+  device: "cuda"  # or "cpu"
+  use_yolo: true
+
+# Audio processing settings
+audio_processing:
+  model: "large-v3"
+  device: "cuda"  # or "cpu"
+  use_whisperx: true
+  language: "auto"
+  diarization_model: "pyannote/speaker-diarization-3.1"  # Latest model
+  
+  # WhisperX specific settings with optimizations
+  whisperx:
+    batch_size: 8  # Reduced for better stability
+    compute_type: "float16"  # Will use float32 if on CPU automatically
+    language: "auto"
+  
+  # Optimized VAD settings
+  vad:
+    threshold: 0.2  # Lower threshold for better sensitivity to soft speech
+    min_speech_duration_ms: 250  # Shorter to capture brief utterances
+    min_silence_duration_ms: 300  # Balanced for natural pauses
+    speech_pad_ms: 50  # Reduced padding for more precise boundaries
+    window_size_samples: 512  # Better frame-level precision
+    cross_validate: true  # Use multiple VAD models if available
+  
+  # Enhanced diarization settings
+  diarization:
+    min_speakers: 2  # Better baseline for speaker separation
+    max_speakers: 6  # Prevent over-segmentation
+    clustering_method: "agglomerative"
+    overlap_threshold: 0.25
+    max_segment_gap: 0.15  # More precise speaker changes
+    min_segment_duration: 1.5  # Avoid fragmentation
+    enable_overlap_detection: true  # Detect overlapping speakers
+  
+  # Advanced audio preprocessing
+  preprocessing:
+    normalize_audio: true  # Apply normalization
+    apply_bandpass_filter: true  # Focus on speech frequencies
+    filter_low_hz: 300  # Lower bound for bandpass filter
+    filter_high_hz: 3400  # Upper bound for bandpass filter
+    
+  # Processing strategy
+  two_pass_processing: true  # Enable transcription-informed diarization
+  segment_duration: 600  # Process in 10-minute segments
+  segment_overlap: 15  # 15 second overlap between segments
+
+# Enhanced Gemini Vision settings
+gemini_vision:
+  # Use video segments for analysis
+  process_scene_videos: true
+  max_video_duration: 60  # Maximum seconds for a scene video to process
+  video_frame_rate: 1     # Sample rate in fps for video analysis
+  combine_video_keyframe_analysis: true  # Combine both analyses for richer results
+  
+  # Gemini model parameters
+  temperature: 0.4  # Increased from 0.2 for slightly more creative descriptions
+  max_tokens: 1500
+  top_p: 0.8
+  api_key: ""  # Set this in environment variable GEMINI_API_KEY
+  
+  # Output structure
+  structured_output: true
+  scene_analysis_fields: [
+    "setting",
+    "emotions",
+    "action",
+    "characters",
+    "dialogue",
+    "cinematography",
+    "significance",
+    "temporal_flow",  # Added for dynamic flow analysis
+    "technical_notes"
+  ]
+
+# Memory optimization for large videos
+memory_optimization:
+  enabled: true
+  max_frames_in_memory: 2000  # Increased for faster processing with modern GPUs
+  batch_size_frames: 64  # Increased for better GPU utilization
+  frame_sampling_rate: 2
+  cleanup_interval: 300
+  use_float16_precision: true
+  use_dynamic_batch_size: true
+  max_embeddings_per_batch: 1000  # Process more embeddings simultaneously
+
+# Parallel processing settings (NEW)
+parallel_processing:
+  enabled: true  # Enable parallel processing of pipeline components
+  max_workers: 4  # Maximum number of parallel workers (adjust based on CPU cores)
+  use_result_cache: true  # Cache and reuse intermediate results
+  cache_dir: ".cache"  # Directory for caching intermediate results
+  cache_ttl: 86400  # Time-to-live for cache entries in seconds (24 hours)

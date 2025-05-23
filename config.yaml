@@ -1,0 +1,168 @@
+# Global settings
+device: "cuda"  # or "cpu"
+output_dir: "output"
+log_level: "INFO"
+
+# Memory optimization settings for large videos
+memory_optimization:
+  enabled: true  # Enable memory optimization for large videos
+  max_frames_in_memory: 2000  # Maximum frames to keep in memory at once
+  batch_size_frames: 32  # Process frames in batches of this size
+  frame_sampling_rate: 2  # Sample every N frames for large videos (higher = less memory, less precision)
+  cleanup_interval: 500  # Run garbage collector every N frames
+  max_embeddings_per_batch: 500  # Maximum embedding vectors to process at once
+  use_float16_precision: true  # Use FP16 on GPU to reduce memory usage
+  use_dynamic_batch_size: true  # Dynamically adjust batch size based on available memory
+
+# Parallel processing settings
+parallel_processing:
+  enabled: true  # Enable parallel processing of pipeline components
+  max_workers: 4  # Maximum number of parallel workers
+  use_result_cache: true  # Cache and reuse intermediate results
+  cache_dir: ".cache"  # Directory for caching intermediate results
+  cache_ttl: 86400  # Time-to-live for cache entries in seconds (24 hours)
+
+# Scene detection settings
+scene_detection:
+  threshold: 0.65  # Lower threshold for more sensitive initial detection (lower = more scenes)
+  min_scene_length: 10.0  # seconds - minimum scene length for camera cuts (lower for more granular initial detection)
+  max_scene_duration: 300.0  # seconds - maximum scene duration for camera cuts (increased to allow longer coherent scenes)
+  min_scene_duration: 20.0  # seconds - minimum scene duration (slightly higher to avoid very short scenes)
+  similarity_window: 10  # Window size for similarity smoothing
+  batch_size: 32
+  device: "cuda"  # or "cpu"
+  # Large video optimization
+  use_windowed_processing: true  # Process large videos in time windows
+  window_duration: 600  # 10 minutes per window for large videos
+  window_overlap: 30  # 2 minutes overlap between windows
+  # Semantic scene combination parameters
+  target_scene_duration: 60.0  # Target duration for logical scenes in seconds - guideline, not strict
+  combine_scenes: true  # Whether to combine short scenes into logical story-based scenes
+  # Advanced semantic clustering parameters
+  max_temporal_gap: 2.0  # Maximum time gap (seconds) between scenes to consider them for merging (reduced for tighter coherence)
+  min_viable_scene_duration: 15.0  # Minimum duration (seconds) for a scene to stand alone
+  clip_model: "ViT-L-14"  # Model for semantic similarity (better embeddings)
+  clip_pretrained: "openai"
+  # New: Setting similarity threshold - controls scene clustering based on visual setting
+  setting_similarity_threshold: 0.75  # Distance threshold for clustering (lower = more settings/scenes, higher = fewer)
+
+# Keyframe extraction settings
+keyframe_extraction:
+  method: "content_based"
+  max_frames_per_scene: 8
+  min_frames_per_scene: 3
+  frames_per_scene: 5  # Added default frames per scene
+  batch_size: 32
+  device: "cuda"  # or "cpu"
+  # Large scene optimization
+  max_frames_to_extract: 64  # Maximum frames to process for very large scenes
+  use_minibatch_kmeans: true  # Use MiniBatchKMeans for large scenes
+  fallback_to_uniform: true  # Fall back to uniform sampling if clustering fails
+  aggressive_sampling_threshold: 10000  # Number of frames to trigger aggressive sampling
+
+# Entity detection settings
+entity_detection:
+  detector: "grounding_sam"  # Ensure this is set to use GroundingSAM
+  grounding_dino_config_path: "/media/padmanabha/ade2c7d4-c787-4bd9-a703-e5c5ce766129/Video_Analysis-27c890695c07c43eba59ee13429932f9b3273b49/models/grounding_sam/GroundingDINO_SwinT_OGC.py"
+  grounding_dino_checkpoint_path: "/media/padmanabha/ade2c7d4-c787-4bd9-a703-e5c5ce766129/Video_Analysis-27c890695c07c43eba59ee13429932f9b3273b49/models/grounding_sam/groundingdino_swint_ogc.pth"
+  sam_checkpoint_path: "/media/padmanabha/ade2c7d4-c787-4bd9-a703-e5c5ce766129/Video_Analysis-27c890695c07c43eba59ee13429932f9b3273b49/models/grounding_sam/sam_vit_h_4b8939.pth"
+  sam_model_type: "vit_h"  # Or "vit_l", "vit_b" depending on the SAM model
+  box_threshold: 0.3
+  text_threshold: 0.25
+  prompt: "person . car . bus . truck . animal . object . building . tree . sign . food . clothing . face . hand . chair . table . bottle . cup . book . phone . laptop . tv . plant" # Expanded prompt
+  min_confidence: 0.3 # Adjusted from 0.5, as GroundingSAM logits might be different
+  device: "cuda"  # or "cpu"
+  # use_yolo: true # This will be ignored if detector is grounding_sam
+  use_ocr: true
+  use_face_detection: true # Can be kept for specific face analysis, or disabled if GroundingSAM handles faces well enough
+  # yolo_model: "yolov5s" # Ignored
+  # face_cascade: "haar" # Can be kept if use_face_detection is true and a separate face detector is desired
+  # classes: ["person", "car", "building", "chair", "table", "laptop", "phone", "book", "tv", "bottle"] # Prompt is used for GroundingSAM
+  # Large video optimization (some may still be relevant)
+  process_keyframes_in_batches: true
+  batch_size: 8 # GroundingSAM can be memory intensive, adjust batch size
+
+# Audio processing settings
+audio_processing:
+  model: "large-v3"
+  device: "cuda"  # or "cpu"
+  use_whisper: false
+  use_faster_whisper: false
+  use_whisperx: true  # Prioritize WhisperX
+  language: "auto"
+  diarization_model: "pyannote/speaker-diarization-3.1"  # Updated to newer model
+  
+  # Skip actual PyAnnote diarization since we don't have a token
+  skip_diarization: true
+  
+  # WhisperX specific settings
+  whisperx:
+    batch_size: 8  # Reduced from 16 for better stability
+    compute_type: "float16"  # Will use float32 if on CPU automatically
+    language: "auto"
+  
+  # Improved VAD settings with recommended optimizations
+  vad:
+    threshold: 0.2  # Reduced from 0.3 for better sensitivity to soft speech
+    min_speech_duration_ms: 250  # Shorter to capture brief utterances
+    min_silence_duration_ms: 300  # Reasonable pause detection
+    speech_pad_ms: 50  # Reduced padding for more precise boundaries
+    window_size_samples: 512  # Added for better frame-level precision
+    cross_validate: true  # Use multiple VAD models if available
+  
+  # Enhanced diarization settings
+  diarization:
+    min_speakers: 2  # Increased from 1 for better speaker separation
+    max_speakers: 4  # Reduced to avoid over-segmentation
+    # Added setting for clustering method
+    clustering_method: "agglomerative"
+    # Added overlap threshold to handle overlapping speech
+    overlap_threshold: 0.25
+    # Max gap between segments by same speaker to be merged (seconds)
+    max_segment_gap: 0.15  # Reduced from 0.3 for more precise speaker changes
+    min_segment_duration: 1.5  # Added minimum segment duration to avoid fragmentation
+    enable_overlap_detection: false  # Disable to avoid dependencies
+  
+  # Advanced audio preprocessing
+  preprocessing:
+    normalize_audio: true  # Apply normalization
+    apply_bandpass_filter: true  # Focus on speech frequencies
+    filter_low_hz: 300  # Lower bound for bandpass filter
+    filter_high_hz: 3400  # Upper bound for bandpass filter
+  
+  # Large audio optimization
+  segment_duration: 600  # Process audio in 10-minute segments
+  segment_overlap: 15  # 15 second overlap between segments
+  two_pass_processing: false  # Disable to simplify processing
+  
+  # Speaker bank configuration
+  speaker_bank:
+    backend: "faiss"
+    dim: 128  # x-vector embedding dimension
+
+# Gemini Vision settings
+gemini_vision:
+  temperature: 0.5  # Updated from 0.2 to 0.5
+  max_tokens: 1024  # Updated to match desired value
+  top_p: 0.8
+  top_k: 40
+  api_key: ""  # Set this in environment variable GEMINI_API_KEY
+  # Added structured output fields
+  structured_output: true
+  scene_analysis_fields: [
+    "setting",
+    "emotions",
+    "action",
+    "characters",
+    "dialogue",
+    "cinematography",
+    "significance",
+    "technical_notes"
+  ]
+
+# Video processing settings
+video_processing:
+  target_scene_duration: 60.0  # seconds - updated to 60s
+  max_scenes: 100
+  fps: 25
+  resolution: [1920, 1080] 
